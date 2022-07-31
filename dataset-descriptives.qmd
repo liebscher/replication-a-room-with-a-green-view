@@ -1,0 +1,110 @@
+---
+title: "Dataset Descriptives"
+format: html
+editor: visual
+---
+
+## Loading Libraries
+
+```{r}
+library(pacman)
+p_load(tidyverse, janitor)
+```
+
+## Loading the Data
+
+```{r}
+data <- read_csv(
+  "data.csv",
+  show_col_types = F
+) %>%
+  clean_names()
+
+glimpse(data)
+```
+
+## Dataset Descriptives Replication
+
+Original statement:
+
+> Since the frequency and duration of greenspace use were highly correlated (`r(2,998) = 0.696, P \< 0.0001`)
+
+```{r}
+cor.test(
+  data$greenspace_use_frequency,
+  data$greenspace_use_duration,
+  method = "pearson"
+)
+```
+
+
+Original statement:
+
+> Our sample participants represented the full range of different age groups.
+
+```{r}
+summary(data$age)
+```
+
+```{r}
+#| echo: false
+data %>%
+  ggplot(aes(age)) +
+  geom_histogram(binwidth = 5, fill = "#177e89", color = "white") +
+  labs(x = "Age", y = "Count (participants)") +
+  theme_linedraw() +
+  theme(panel.grid = element_blank())
+```
+
+
+Original statement:
+
+> The number of male and female participants was the same (1,500 of each)
+
+```{r}
+table(data$sex)
+```
+
+
+Original statement:
+
+> Among the 3,000 participants, there was marked variation in the five mental health outcomes (Fig. 1)
+
+```{r}
+behav_vars <- c("depression_and_anxiety", "life_satisfaction", "self_esteem", "subjective_happiness", "loneliness")
+
+data %>%
+  mutate(across(all_of(behav_vars), scale)) %>%
+  pivot_longer(cols = all_of(behav_vars)) %>%
+  ggplot(aes(value)) +
+  geom_density(color = "#177e89") +
+  facet_grid(rows = "name") +
+  labs(x = "Z-Scored Value", y = "Density") +
+  theme_linedraw() +
+  theme(panel.grid = element_blank())
+```
+
+
+Original statement:
+
+> The frequency of greenspace use varied widely across participants, but the majority of participants did not visit any greenspace in May 2020
+
+```{r}
+data %>%
+  pivot_longer(cols = c(greenspace_use_frequency, greenspace_use_duration)) %>%
+  ggplot(aes(value)) +
+  geom_histogram(bins = 10, fill = "#177e89", color = "white") +
+  facet_wrap(~name, scales = "free_x") +
+  labs(x = "Value (see paper)", y = "Count (participants)") +
+  theme_linedraw() +
+  theme(panel.grid = element_blank())
+```
+
+Original statement:
+
+> Approximately 81% of the participants reported that their home had a view of nature
+
+```{r}
+prop.table(table(data$nature_view))
+```
+

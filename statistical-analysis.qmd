@@ -1,0 +1,199 @@
+---
+title: "Statistical Analysis"
+format: html
+editor: visual
+---
+
+## Loading Libraries
+
+```{r}
+#| include: false
+options(na.action = "na.fail")
+```
+
+```{r}
+library(pacman)
+p_load(tidyverse, janitor, magrittr, MuMIn)
+```
+
+## Loading the Data
+
+Same as `dataset-descriptives.qmd`.
+
+```{r}
+data <- read_csv(
+  "data.csv",
+  show_col_types = F
+) %>%
+  clean_names()
+
+glimpse(data)
+```
+
+The paper says of their preprocessing:
+
+> To allow direct comparisons, we scaled all our continuous predictors to have a mean of zero and a standard deviation of one. We also scaled our response variables in the same manner to aid interpretation and comparisons.
+
+thus, we follow:
+
+```{r}
+data <- data %>%
+  mutate(across(where(is.numeric), scale))
+```
+
+## Model Selection
+
+The authors write:
+
+> To determine the key factors that predict mental health outcomes we fitted linear models (LMs) using the mental health metrics (Table 1) as our response variables and the green space use, green view (Table 2), neighborhood greenness (NDVI), lifestyle, and sociodemographic measures as predictors (Table 3). ... We conducted a model averaging procedure using Akaike’s Information Criterion corrected for small sample sizes (AICc; Burnham and Anderson 2002).
+
+So we start off with our DVs:
+
+```{r}
+dvs <- c(
+  "depression_and_anxiety", "life_satisfaction",
+  "self_esteem", "subjective_happiness", "loneliness"
+)
+```
+
+Then we write a wrapper function to help create our full models easily from that list of DVs:
+
+```{r}
+models <- map(dvs, function(dv) {
+  data %$%
+    lm(
+      formula(paste(
+        dv,
+        "greenspace_use_duration + nature_view +
+        sex + age +
+        income + housing_type + impact_of_covid_19_on_income +
+        frequency_of_smoking + frequency_of_drinking_alcohol +
+        number_of_working_days + number_of_children + presence_of_a_pet",
+        sep = "~"
+      ))
+    )
+})
+```
+
+Based on the authors' citation of the `MuMIn` package, we infer they used that for their model specifications. I noticed that the package has this `dredge` function which makes it easy to define alternative models.
+
+```{r}
+#| message: false
+model_spaces <- map(models, dredge, beta = "none")
+```
+
+We use the same package for model averaging. I haven't looked at the inner-workings of the package and don't know exactly how this function works.
+
+From the authors:
+
+> We fitted all subsets of a full model that contained all of our predictor variables and performed model averaging on all models within AICc = 6 (Burnham and Anderson 2002, Anderson 2007).
+
+```{r}
+model_space_avgs <- map(model_spaces, ~{model.avg(.x, subset = delta < 6)})
+```
+
+The authors write:
+
+> After averaging across the subset of models, we calculated the mean estimates and 95% confidence intervals for each explanatory variable.
+
+So, we follow:
+
+```{r}
+build_estimates <- function(model_space_avg) {
+  model_space_avg_ests <- model_space_avg$coefficients["subset",]
+  model_space_avg_confint <- as_tibble(confint(model_space_avg)) %>%
+    rename("p025" = "2.5 %", "p975" = "97.5 %")
+  
+  tibble(variable = factor(
+    names(model_space_avg_ests),
+    levels = c(
+      "housing_typerented_flat",
+      "housing_typeowned_flat",
+      "frequency_of_smoking",
+      "frequency_of_drinking_alcohol",
+      "sexmale",
+      "age",
+      "income",
+      "impact_of_covid_19_on_income",
+      "greenspace_use_duration",
+      "nature_view"
+    ),
+    labels = c(
+      "Housing (Rented flat compared to owned house)",
+      "Housing (Owned flat compared to owned house)",
+      "Smoking",
+      "Alcohol use",
+      "Male compared to female",
+      "Age",
+      "Income",
+      "Impact of COVID-19 on income",
+      "Greenspace use",
+      "Green view"
+    )
+  ),
+  estimate = model_space_avg_ests) %>%
+    bind_cols(model_space_avg_confint)
+}
+```
+
+Finally, the authors write:
+
+> We plotted our results as effect sizes and interpreted predictors as significant if their 95% confidence intervals did not cross the zero-effect line
+
+So we write a wrapper function to help plot:
+
+```{r}
+plot_dv <- function(estimates) {
+  estimates %>%
+    filter(variable != "(Intercept)") %>%
+    ggplot(aes(estimate, variable)) +
+    geom_vline(xintercept = 0, linetype = "dashed", size = 0.35, color = "grey") +
+    geom_point(aes(size = sign(p025) == sign(p975)), show.legend = F) +
+    geom_linerange(aes(xmin = p025, xmax = p975)) +
+    scale_size_manual(values = c(1, 3)) +
+    labs(x = "Effect Size", y = element_blank()) +
+    facet_wrap(~dv, scales = "free_x") +
+    theme_linedraw() +
+    theme(panel.grid = element_blank()) 
+}
+```
+
+## Results
+
+First, we have our positive mental health metrics:
+
+```{r}
+p1 <- model_space_avgs[[3]] %>% build_estimates() %>%
+  mutate(dv = 1)
+p2 <- model_space_avgs[[2]] %>% build_estimates() %>%
+  mutate(dv = 2)
+p3 <- model_space_avgs[[4]] %>% build_estimates() %>%
+  mutate(dv = 3)
+
+data <- bind_rows(p1, p2, p3) %>%
+  mutate(dv = factor(
+    dv,
+    levels = 1:3,
+    labels = c("Self-Esteem", "Life satisfaction", "Happiness")
+  ))
+
+plot_dv(data)
+```
+
+Second, we have our negative mental health metrics:
+
+```{r}
+p1 <- model_space_avgs[[5]] %>% build_estimates() %>%
+  mutate(dv = 1)
+p2 <- model_space_avgs[[1]] %>% build_estimates() %>%
+  mutate(dv = 2)
+
+data <- bind_rows(p1, p2) %>%
+  mutate(dv = factor(
+    dv,
+    levels = 1:2,
+    labels = c("Loneliness", "Depression and Anxiety")
+  ))
+
+plot_dv(data)
+```
