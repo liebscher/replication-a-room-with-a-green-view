@@ -1,6 +1,13 @@
 ---
 title: "Statistical Analysis"
-format: html
+date: 2022-07-30
+author: "Alex Liebscher"
+format:
+  html:
+    toc: true
+    smooth-scroll: true
+    title-block-banner: "#177e89"
+    self-contained: true
 editor: visual
 ---
 
@@ -41,7 +48,9 @@ data <- data %>%
   mutate(across(where(is.numeric), .fns = ~{(.x - mean(.x)) / sd(.x)}))
 ```
 
-## Model Selection
+(while we could use `scale` here, we choose not to because it transforms the columns into potentially troublesome objects)
+
+## Model Averaging
 
 The authors write:
 
@@ -74,6 +83,8 @@ models <- map(dvs, function(dv) {
     )
 })
 ```
+
+Note: we are not working with the NDVI data, which is one of my most prominent discrepancies from the original paper.
 
 Based on the authors' citation of the `MuMIn` package, we infer they used that for their model specifications. I noticed that the package has this `dredge` function which makes it easy to define alternative models.
 
@@ -140,7 +151,7 @@ Finally, the authors write:
 
 > We plotted our results as effect sizes and interpreted predictors as significant if their 95% confidence intervals did not cross the zero-effect line
 
-So we write a wrapper function to help plot:
+So we write a function to help plot:
 
 ```{r}
 plot_dvs <- function(estimates) {

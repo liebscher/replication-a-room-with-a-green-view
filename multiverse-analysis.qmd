@@ -1,6 +1,13 @@
 ---
 title: "Multiverse Analysis"
-format: html
+date: 2022-07-30
+author: "Alex Liebscher"
+format:
+  html:
+    toc: true
+    smooth-scroll: true
+    title-block-banner: "#177e89"
+    self-contained: true
 editor: visual
 ---
 
@@ -23,13 +30,13 @@ data <- read_csv(
   clean_names()
 ```
 
+Later on we'll choose to examine our model with age as a categorical variable, so we'll create that option here:
+
 ```{r}
 data <- data %>%
   mutate(age_bin = case_when(
     age < 25 ~ "<25",
-    age < 35 ~ "<35",
     age < 45 ~ "<45",
-    age < 55 ~ "<55",
     age < 65 ~ "<65",
     T ~ ">=65",
   ))
@@ -50,12 +57,26 @@ IVs <- formula(". ~ greenspace_use_duration + nature_view +
 
 ### Build the Multiverse
 
+Some resources I leaned on to learn about and create this multiverse analysis:
+
+ - http://www.the100.ci/2021/03/07/mulltiverse-analysis/
+ - https://journals.sagepub.com/doi/10.1177/1745691616658637
+ 
+And a couple to help guide with marginal effects:
+
+ - https://www.andrewheiss.com/blog/2022/05/20/marginalia/#what-about-marginal-things-in-statistics
+ - https://vincentarelbundock.github.io/marginaleffects/articles/marginaleffects.html
+ 
+Now, let's create our multiverse:
+
 ```{r}
 M = multiverse()
 inside(M, {
   df = data
 })
 ```
+
+According to our conditional logic, we'll establish different branches that our analysis could take. Again, our intention is to calculate our results for a variety of "arbitrary" modeling decisions.
 
 ```{r}
 inside(M, {
@@ -120,6 +141,8 @@ inside(M, {
 })
 ```
 
+Next, we'll fit our linear models on our five measures of mental health:
+
 ```{r}
 inside(M, {
   model.loneliness <- lm(
@@ -149,6 +172,8 @@ inside(M, {
 })
 ```
 
+Lastly, we calculate marginal effects for each DV of our Greenspace Use predictor. We do this because we're interested in the effect of Greenspace Use on mental health.
+
 ```{r}
 inside(M, {
   mfx.loneliness <- model.loneliness %>%
@@ -175,11 +200,15 @@ inside(M, {
 
 ### Execute the Multiverse
 
+The `multiverse` package makes it very simple to execute each of these many universes of analyses:
+
 ```{r}
 execute_multiverse(M)
 ```
 
 ### Visualization
+
+To top it all off, we'll create some visualizations of our results. First we need to create useable data:
 
 ```{r}
 expand_multiverse_results <- function(var) {
@@ -211,12 +240,15 @@ universes <- bind_rows(
 )
 ```
 
+Now we plot our Average Marginal Effects (AME) of Greenspace Use for each DV:
+
 ```{r}
 universes %>%
   ggplot(aes(p.value, estimate)) +
   geom_point(size = 0.25) +
   geom_hline(yintercept = 0, size = 0.25, color = "grey", linetype = "dashed") +
   facet_wrap(~ dv, ncol = 1, scales = "fixed") +
+  labs(x = "p-value", y = "Average Marginal Effect") +
   theme_linedraw() +
   theme(panel.grid = element_blank())
 ```
@@ -226,6 +258,7 @@ universes %>%
 ggsave("~/Documents/site/content/images/pvalue-curves.png", width = 8, height = 6, dpi = 300)
 ```
 
+Lastly, specification curves for our DVs:
 
 ```{r}
 universes %>%
@@ -236,6 +269,7 @@ universes %>%
   geom_point(aes(color = p.value < 0.05), size = 0.25) +
   scale_color_manual(values = c("red", "blue")) +
   facet_wrap(~ dv, ncol = 1, scales = "free_y") +
+  labs(x = "Universe", y = "Average Marginal Effect", color = "p-value < 0.05") +
   theme_linedraw() +
   theme(panel.grid = element_blank(), legend.position = "bottom")
 ```

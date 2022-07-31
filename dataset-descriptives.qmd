@@ -1,6 +1,13 @@
 ---
 title: "Dataset Descriptives"
-format: html
+date: 2022-07-30
+author: "Alex Liebscher"
+format:
+  html:
+    toc: true
+    smooth-scroll: true
+    title-block-banner: "#177e89"
+    self-contained: true
 editor: visual
 ---
 
@@ -23,16 +30,9 @@ data <- read_csv(
 glimpse(data)
 ```
 
-## Dataset Descriptives Original
-
-```{r}
-data
-```
-
-
 ## Dataset Descriptives Replication
 
-Original statement:
+Authors' original statement:
 
 > Since the frequency and duration of greenspace use were highly correlated (`r(2,998) = 0.696, P \< 0.0001`)
 
@@ -44,8 +44,7 @@ cor.test(
 )
 ```
 
-
-Original statement:
+Authors' original statement:
 
 > Our sample participants represented the full range of different age groups.
 
@@ -63,8 +62,7 @@ data %>%
   theme(panel.grid = element_blank())
 ```
 
-
-Original statement:
+Authors' original statement:
 
 > The number of male and female participants was the same (1,500 of each)
 
@@ -72,8 +70,7 @@ Original statement:
 table(data$sex)
 ```
 
-
-Original statement:
+Authors' original statement:
 
 > Among the 3,000 participants, there was marked variation in the five mental health outcomes (Fig. 1)
 
@@ -91,8 +88,7 @@ data %>%
   theme(panel.grid = element_blank())
 ```
 
-
-Original statement:
+Authors' original statement:
 
 > The frequency of greenspace use varied widely across participants, but the majority of participants did not visit any greenspace in May 2020
 
@@ -107,11 +103,10 @@ data %>%
   theme(panel.grid = element_blank())
 ```
 
-Original statement:
+Authors' original statement:
 
 > Approximately 81% of the participants reported that their home had a view of nature
 
 ```{r}
 prop.table(table(data$nature_view))
 ```
-
