@@ -54,7 +54,7 @@ data <- data %>%
 
 The authors write:
 
-> To determine the key factors that predict mental health outcomes we fitted linear models (LMs) using the mental health metrics (Table 1) as our response variables and the green space use, green view (Table 2), neighborhood greenness (NDVI), lifestyle, and sociodemographic measures as predictors (Table 3). ... We conducted a model averaging procedure using Akaike’s Information Criterion corrected for small sample sizes (AICc; Burnham and Anderson 2002).
+> To determine the key factors that predict mental health outcomes we fitted linear models (LMs) using the mental health metrics (Table 1) as our response variables and the green space use, green view (Table 2), neighborhood greenness (NDVI), lifestyle, and sociodemographic measures as predictors (Table 3). ... We conducted a model averaging procedure using Akaike's Information Criterion corrected for small sample sizes (AICc; Burnham and Anderson 2002).
 
 So we start off with our DVs:
 
@@ -195,7 +195,6 @@ plot_dvs(data)
 #| include: false
 ggsave("~/Documents/site/content/images/pos-mental-health-coefs.png", width = 8, height = 2.4, dpi = 300)
 ```
-
 
 Second, we have our negative mental health metrics:
 
