@@ -1,0 +1,247 @@
+---
+title: "Multiverse Analysis"
+format: html
+editor: visual
+---
+
+## Loading Libraries
+
+```{r}
+library(pacman)
+p_load(tidyverse, janitor, magrittr, multiverse, marginaleffects)
+```
+
+## Loading the Data
+
+Same as `dataset-descriptives.qmd`.
+
+```{r}
+data <- read_csv(
+  "data.csv",
+  show_col_types = F
+) %>%
+  clean_names()
+```
+
+```{r}
+data <- data %>%
+  mutate(age_bin = case_when(
+    age < 25 ~ "<25",
+    age < 35 ~ "<35",
+    age < 45 ~ "<45",
+    age < 55 ~ "<55",
+    age < 65 ~ "<65",
+    T ~ ">=65",
+  ))
+```
+
+
+## Multiverse Analysis
+
+We start off with our DVs:
+
+```{r}
+IVs <- formula(". ~ greenspace_use_duration + nature_view +
+        sex + age + age_bin +
+        income + housing_type + impact_of_covid_19_on_income +
+        frequency_of_smoking + frequency_of_drinking_alcohol +
+        number_of_working_days + number_of_children + presence_of_a_pet")
+```
+
+### Build the Multiverse
+
+```{r}
+M = multiverse()
+inside(M, {
+  df = data
+})
+```
+
+```{r}
+inside(M, {
+  df = df %>%
+    filter(branch(
+      EXHT,
+      "no_exc" ~ T,
+      "housing_type_other" ~ housing_type != "other"
+    )) %>%
+    filter(branch(
+      FTW,
+      "all" ~ T,
+      "full_time_only" ~ number_of_working_days >= 5
+    ))
+})
+
+inside(M, {
+  predictors <- branch(
+    CN,
+    "greenspace_use_only" ~ update.formula(IVs, . ~ . - nature_view),
+    "greenspace_use_nature_view" ~ IVs
+  )
+  
+  predictors <- branch(
+    GSL,
+    "identity" ~ predictors,
+    "log" ~ update.formula(predictors, . ~ . - greenspace_use_duration + log(greenspace_use_duration+1))
+  )
+  
+  predictors <- branch(
+    AB,
+    "num" ~ update.formula(predictors, . ~ . - age_bin),
+    "bin" ~ update.formula(predictors, . ~ . - age)
+  )
+  
+  predictors <- branch(
+    DP,
+    "exc" ~ update.formula(predictors, . ~ . - age - age_bin - sex),
+    "inc" ~ predictors
+  )
+  
+  predictors <- branch(
+    IP,
+    "exc" ~ update.formula(predictors, . ~ . - income - impact_of_covid_19_on_income),
+    "inc" ~ predictors
+  )
+  
+  predictors <- branch(
+    ILP,
+    "identity" %when% (IP == "inc") ~ predictors,
+    "log" %when% (IP == "inc") ~ update.formula(predictors, . ~ . - income + log(income)),
+    "none" ~ predictors
+  )
+  
+  predictors <- branch(
+    LP,
+    "exc" ~ update.formula(predictors, . ~ . - housing_type -
+        frequency_of_smoking - frequency_of_drinking_alcohol -
+        number_of_working_days - number_of_children - presence_of_a_pet),
+    "inc" ~ predictors
+  )
+})
+```
+
+```{r}
+inside(M, {
+  model.loneliness <- lm(
+    update.formula(predictors, loneliness ~ .),
+    data = df
+  )
+
+  model.depression_and_anxiety <- lm(
+    update.formula(predictors, depression_and_anxiety ~ .),
+    data = df
+  )
+  
+  model.life_satisfaction <- lm(
+    update.formula(predictors, life_satisfaction ~ .),
+    data = df
+  )
+  
+  model.self_esteem <- lm(
+    update.formula(predictors, self_esteem ~ .),
+    data = df
+  )
+  
+  model.subjective_happiness <- lm(
+    update.formula(predictors, subjective_happiness ~ .),
+    data = df
+  )
+})
+```
+
+```{r}
+inside(M, {
+  mfx.loneliness <- model.loneliness %>%
+    marginaleffects(variables = "greenspace_use_duration") %>%
+    tidy()
+  
+  mfx.depression_and_anxiety <- model.depression_and_anxiety %>%
+    marginaleffects(variables = "greenspace_use_duration") %>%
+    tidy()
+  
+  mfx.life_satisfaction <- model.life_satisfaction %>%
+    marginaleffects(variables = "greenspace_use_duration") %>%
+    tidy()
+  
+  mfx.self_esteem <- model.self_esteem %>%
+    marginaleffects(variables = "greenspace_use_duration") %>%
+    tidy()
+  
+  mfx.subjective_happiness <- model.subjective_happiness %>%
+    marginaleffects(variables = "greenspace_use_duration") %>%
+    tidy()
+})
+```
+
+### Execute the Multiverse
+
+```{r}
+execute_multiverse(M)
+```
+
+### Visualization
+
+```{r}
+expand_multiverse_results <- function(var) {
+  expand(M) %>%
+    extract_variables({{var}}) %>%
+    unnest(cols = c({{var}})) %>%
+    select(-c(.parameter_assignment, .code, .results, .errors, type))
+}
+
+multiverse_results_loneliness <- expand_multiverse_results("mfx.loneliness")
+multiverse_results_depression_and_anxiety <- expand_multiverse_results("mfx.depression_and_anxiety")
+multiverse_results_life_satisfaction <- expand_multiverse_results("mfx.life_satisfaction")
+multiverse_results_self_esteem <- expand_multiverse_results("mfx.self_esteem")
+multiverse_results_subjective_happiness <- expand_multiverse_results("mfx.subjective_happiness")
+```
+
+```{r}
+universes <- bind_rows(
+  multiverse_results_loneliness %>%
+    mutate(dv = "Loneliness"),
+  multiverse_results_depression_and_anxiety %>%
+    mutate(dv = "Depression and Anxiety"),
+  multiverse_results_life_satisfaction %>%
+    mutate(dv = "Life Satisfaction"),
+  multiverse_results_self_esteem %>%
+    mutate(dv = "Self-Esteem"),
+  multiverse_results_subjective_happiness %>%
+    mutate(dv = "Happiness")
+)
+```
+
+```{r}
+universes %>%
+  ggplot(aes(p.value, estimate)) +
+  geom_point(size = 0.25) +
+  geom_hline(yintercept = 0, size = 0.25, color = "grey", linetype = "dashed") +
+  facet_wrap(~ dv, ncol = 1, scales = "fixed") +
+  theme_linedraw() +
+  theme(panel.grid = element_blank())
+```
+
+```{r}
+#| include: false
+ggsave("~/Documents/site/content/images/pvalue-curves.png", width = 8, height = 6, dpi = 300)
+```
+
+
+```{r}
+universes %>%
+  group_by(dv) %>%
+  arrange(estimate) %>%
+  mutate(.universe = 1:n()) %>%
+  ggplot(aes(.universe, estimate)) +
+  geom_point(aes(color = p.value < 0.05), size = 0.25) +
+  scale_color_manual(values = c("red", "blue")) +
+  facet_wrap(~ dv, ncol = 1, scales = "free_y") +
+  theme_linedraw() +
+  theme(panel.grid = element_blank(), legend.position = "bottom")
+```
+
+```{r}
+#| include: false
+ggsave("~/Documents/site/content/images/specification-curves.png", width = 8, height = 6, dpi = 300)
+```
+

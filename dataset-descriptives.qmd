@@ -23,6 +23,13 @@ data <- read_csv(
 glimpse(data)
 ```
 
+## Dataset Descriptives Original
+
+```{r}
+data
+```
+
+
 ## Dataset Descriptives Replication
 
 Original statement:

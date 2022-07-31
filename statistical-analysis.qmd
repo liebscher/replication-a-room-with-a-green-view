@@ -38,7 +38,7 @@ thus, we follow:
 
 ```{r}
 data <- data %>%
-  mutate(across(where(is.numeric), scale))
+  mutate(across(where(is.numeric), .fns = ~{(.x - mean(.x)) / sd(.x)}))
 ```
 
 ## Model Selection
@@ -143,13 +143,13 @@ Finally, the authors write:
 So we write a wrapper function to help plot:
 
 ```{r}
-plot_dv <- function(estimates) {
+plot_dvs <- function(estimates) {
   estimates %>%
     filter(variable != "(Intercept)") %>%
     ggplot(aes(estimate, variable)) +
     geom_vline(xintercept = 0, linetype = "dashed", size = 0.35, color = "grey") +
-    geom_point(aes(size = sign(p025) == sign(p975)), show.legend = F) +
     geom_linerange(aes(xmin = p025, xmax = p975)) +
+    geom_point(aes(size = (sign(p025) == sign(p975)), color = variable), show.legend = F) +
     scale_size_manual(values = c(1, 3)) +
     labs(x = "Effect Size", y = element_blank()) +
     facet_wrap(~dv, scales = "free_x") +
@@ -177,8 +177,14 @@ data <- bind_rows(p1, p2, p3) %>%
     labels = c("Self-Esteem", "Life satisfaction", "Happiness")
   ))
 
-plot_dv(data)
+plot_dvs(data)
 ```
+
+```{r}
+#| include: false
+ggsave("~/Documents/site/content/images/pos-mental-health-coefs.png", width = 8, height = 2.4, dpi = 300)
+```
+
 
 Second, we have our negative mental health metrics:
 
@@ -195,5 +201,10 @@ data <- bind_rows(p1, p2) %>%
     labels = c("Loneliness", "Depression and Anxiety")
   ))
 
-plot_dv(data)
+plot_dvs(data)
+```
+
+```{r}
+#| include: false
+ggsave("~/Documents/site/content/images/neg-mental-health-coefs.png", width = 8, height = 2.4, dpi = 300)
 ```

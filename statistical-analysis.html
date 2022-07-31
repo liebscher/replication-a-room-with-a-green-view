@@ -165,7 +165,7 @@ $ housing_type                  &lt;chr&gt; "rented_flat", "owned_flat", "rented
 <p>thus, we follow:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> data <span class="sc">%&gt;%</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">where</span>(is.numeric), scale))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">where</span>(is.numeric), <span class="at">.fns =</span> <span class="sc">~</span>{(.x <span class="sc">-</span> <span class="fu">mean</span>(.x)) <span class="sc">/</span> <span class="fu">sd</span>(.x)}))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="model-selection" class="level2">
@@ -258,13 +258,13 @@ $ housing_type                  &lt;chr&gt; "rented_flat", "owned_flat", "rented
 </blockquote>
 <p>So we write a wrapper function to help plot:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>plot_dv <span class="ot">&lt;-</span> <span class="cf">function</span>(estimates) {</span>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>plot_dvs <span class="ot">&lt;-</span> <span class="cf">function</span>(estimates) {</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  estimates <span class="sc">%&gt;%</span></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(variable <span class="sc">!=</span> <span class="st">"(Intercept)"</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(estimate, variable)) <span class="sc">+</span></span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">size =</span> <span class="fl">0.35</span>, <span class="at">color =</span> <span class="st">"grey"</span>) <span class="sc">+</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">size =</span> <span class="fu">sign</span>(p025) <span class="sc">==</span> <span class="fu">sign</span>(p975)), <span class="at">show.legend =</span> F) <span class="sc">+</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_linerange</span>(<span class="fu">aes</span>(<span class="at">xmin =</span> p025, <span class="at">xmax =</span> p975)) <span class="sc">+</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_linerange</span>(<span class="fu">aes</span>(<span class="at">xmin =</span> p025, <span class="at">xmax =</span> p975)) <span class="sc">+</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">size =</span> (<span class="fu">sign</span>(p025) <span class="sc">==</span> <span class="fu">sign</span>(p975)), <span class="at">color =</span> variable), <span class="at">show.legend =</span> F) <span class="sc">+</span></span>
 <span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_size_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>)) <span class="sc">+</span></span>
 <span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Effect Size"</span>, <span class="at">y =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
 <span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>dv, <span class="at">scales =</span> <span class="st">"free_x"</span>) <span class="sc">+</span></span>
@@ -291,7 +291,7 @@ $ housing_type                  &lt;chr&gt; "rented_flat", "owned_flat", "rented
 <span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Self-Esteem"</span>, <span class="st">"Life satisfaction"</span>, <span class="st">"Happiness"</span>)</span>
 <span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  ))</span>
 <span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_dv</span>(data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_dvs</span>(data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="statistical-analysis_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid" width="672"></p>
 </div>
@@ -310,9 +310,9 @@ $ housing_type                  &lt;chr&gt; "rented_flat", "owned_flat", "rented
 <span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Loneliness"</span>, <span class="st">"Depression and Anxiety"</span>)</span>
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  ))</span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_dv</span>(data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_dvs</span>(data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="statistical-analysis_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid" width="672"></p>
+<p><img src="statistical-analysis_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
